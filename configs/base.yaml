@@ -1,0 +1,14 @@
+seed: 42
+
+data:
+  dataset_name: "ett"
+  dataset_variant: "ETT_1ST"   # example placeholder, adjust later
+  context_len: 512
+  horizon: 96
+
+model:
+  hf_model_id: "amazon/chronos-2"
+  device: "cpu"
+
+output:
+  results_dir: "results"
