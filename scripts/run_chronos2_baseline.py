@@ -8,14 +8,24 @@ from datasets import load_dataset
 from chronos import Chronos2Pipeline
 
 
+def to_list_if_array(x):
+    """Convert numpy arrays to Python lists (needed before explode)."""
+    if isinstance(x, np.ndarray):
+        return x.tolist()
+    return x
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--results_dir", default="results", type=str)
+    parser.add_argument("--dataset_config", default="ETT_15T", type=str)
     parser.add_argument("--device", default="cpu", type=str)
     parser.add_argument("--horizon", default=96, type=int)
+    parser.add_argument("--value_col", default="OT", type=str, help="Which column to forecast (ETT: OT)")
     args = parser.parse_args()
 
-    os.makedirs(os.path.join(args.results_dir, "figures"), exist_ok=True)
+    fig_dir = os.path.join(args.results_dir, "figures")
+    os.makedirs(fig_dir, exist_ok=True)
 
     # 1) Load Chronos-2 pretrained pipeline
     pipeline = Chronos2Pipeline.from_pretrained(
@@ -23,49 +33,84 @@ def main():
         device_map=args.device,
     )
 
-    # 2) Load a benchmark dataset 
-    ds = load_dataset("autogluon/fev_datasets", "ETT_1ST")
-    df = ds["train"].to_pandas()
+    # 2) Load dataset
+    ds = load_dataset("autogluon/fev_datasets", args.dataset_config)
+    df_raw = ds["train"].to_pandas()
 
-    # The dataset contains multiple series; use the first ID and its target
-   
-    first_id = df["id"].iloc[0]
-    series = df[df["id"] == first_id].sort_values("timestamp")["target"].astype(float).values
+    # Sanity: show columns once
+    print("Raw columns:", df_raw.columns.tolist())
 
-    # 3) Forecast next horizon from the last context window
-    # Chronos pipeline expects a list/array of past values
-    context = series[:-args.horizon]
-    true_future = series[-args.horizon:]
+    # 3) Build long-format dataframe: id, timestamp, target
+    if args.value_col not in df_raw.columns:
+        raise ValueError(
+            f"value_col='{args.value_col}' not found. Available columns: {df_raw.columns.tolist()}"
+        )
 
-    forecast = pipeline.predict(
-        context,
+    df = df_raw[["id", "timestamp", args.value_col]].copy()
+    df = df.rename(columns={args.value_col: "target"})
+
+    # Convert numpy arrays -> lists so explode works
+    df["timestamp"] = df["timestamp"].apply(to_list_if_array)
+    df["target"] = df["target"].apply(to_list_if_array)
+
+    # Explode arrays so each row is one timestamp
+    df = df.explode(["timestamp", "target"], ignore_index=True)
+
+    # Types
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df["target"] = pd.to_numeric(df["target"], errors="coerce")
+    df = df.dropna(subset=["target"]).sort_values(["id", "timestamp"])
+
+    # 4) Choose one series id
+    series_id = df["id"].iloc[0]
+    series_df = df[df["id"] == series_id].copy()
+
+    # Split into context and ground-truth for the last horizon points
+    if len(series_df) <= args.horizon + 10:
+        raise ValueError(f"Series too short: len={len(series_df)} horizon={args.horizon}")
+
+    context_df = series_df.iloc[:-args.horizon].copy()
+    ground_truth = series_df.iloc[-args.horizon:].copy()
+
+    # 5) Forecast using predict_df (same as notebook)
+    pred_df = pipeline.predict_df(
+        context_df,
         prediction_length=args.horizon,
+        quantile_levels=[0.1, 0.5, 0.9],
+        id_column="id",
+        timestamp_column="timestamp",
+        target="target",
     )
 
-    # forecast can be samples or quantiles depending on pipeline; take mean if samples
-    # Safe approach: convert to numpy and average over sample dimension if needed
-    pred = np.array(forecast)
-    if pred.ndim > 1:
-        pred_mean = pred.mean(axis=0)
-    else:
-        pred_mean = pred
+    # Join with GT and compute metrics on median forecast
+    comparison = ground_truth.copy()
+    comparison["pred_median"] = pred_df["0.5"].values
 
-    # 4) Simple metrics
-    mae = np.mean(np.abs(true_future - pred_mean))
-    mse = np.mean((true_future - pred_mean) ** 2)
-    print(f"MAE={mae:.4f} MSE={mse:.4f} (series_id={first_id})")
+    mae = (comparison["target"] - comparison["pred_median"]).abs().mean()
+    mse = ((comparison["target"] - comparison["pred_median"]) ** 2).mean()
 
-    # 5) Plot
-    plt.figure()
-    plt.plot(range(len(series)), series, label="series")
-    start = len(series) - args.horizon
-    plt.plot(range(start, len(series)), pred_mean, label="forecast")
-    plt.title(f"Chronos-2 baseline (id={first_id})")
+    print(f"MAE={mae:.6f} MSE={mse:.6f} (series_id={series_id}, value_col={args.value_col})")
+
+    # 6) Plot GT vs prediction
+    plt.figure(figsize=(10, 4))
+    plt.plot(comparison["timestamp"], comparison["target"], label="Ground Truth", marker="o")
+    plt.plot(comparison["timestamp"], comparison["pred_median"], label="Prediction (q=0.5)", marker="x")
+    plt.xticks(rotation=30)
+    plt.title(f"Chronos-2 baseline ({args.dataset_config}, id={series_id}, col={args.value_col})")
     plt.legend()
 
-    outpath = os.path.join(args.results_dir, "figures", "chronos2_baseline.png")
+    outpath = os.path.join(fig_dir, "chronos2_baseline.png")
+    print("Saving to:", os.path.abspath(outpath))
     plt.savefig(outpath, dpi=150, bbox_inches="tight")
     print(f"Saved plot: {outpath}")
+
+    # Optional: save the comparison table
+    csv_path = os.path.join(args.results_dir, "tables")
+    os.makedirs(csv_path, exist_ok=True)
+    comparison_out = os.path.join(csv_path, "chronos2_baseline_comparison.csv")
+
+    comparison.to_csv(comparison_out, index=False)
+    print(f"Saved table: {comparison_out}")
 
 
 if __name__ == "__main__":
