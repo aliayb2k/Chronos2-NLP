@@ -104,7 +104,7 @@ def main():
     plt.savefig(outpath, dpi=150, bbox_inches="tight")
     print(f"Saved plot: {outpath}")
 
-    # Optional: save the comparison table
+    #save the comparison table
     csv_path = os.path.join(args.results_dir, "tables")
     os.makedirs(csv_path, exist_ok=True)
     comparison_out = os.path.join(csv_path, "chronos2_baseline_comparison.csv")

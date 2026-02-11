@@ -6,6 +6,7 @@ matplotlib
 # Hugging Face dataset loader (used for autogluon/fev_datasets)
 datasets
 
+yfinance
 # Amazon Chronos / Chronos-2 library (correct package)
 chronos-forecasting
 
