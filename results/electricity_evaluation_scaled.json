@@ -1,0 +1,17 @@
+{
+  "baseline": {
+    "mean": 2725.94677734375,
+    "std": 1521.38427734375
+  },
+  "adaptive": {
+    "mean": 2722.9326171875,
+    "std": 1504.3099365234375
+  },
+  "comparison": {
+    "t_statistic": -0.28081995248794556,
+    "p_value": 0.3900153934955597,
+    "cohens_d": -0.040117133408784866,
+    "improvement_pct": 0.11057296395301819
+  },
+  "note": "Evaluation with scaling: data normalized to mean=0, std=1 before prediction, MAE computed in original scale"
+}

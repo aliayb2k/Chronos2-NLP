@@ -4,3 +4,11 @@ __pycache__/
 .ipynb_checkpoints/
 .vscode/
 .cache/
+
+# Project specifics
+logs/
+checkpoints/*_final.pt
+checkpoints/best_model.pt
+checkpoints/final_model.pt
+training_output.log
+
