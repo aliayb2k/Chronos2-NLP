@@ -17,3 +17,6 @@ accelerate
 einops
 scikit-learn
 
+# API
+groq
+python-dotenv
