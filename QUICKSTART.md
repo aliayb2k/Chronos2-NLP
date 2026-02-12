@@ -1,180 +1,58 @@
-# Quick Start Guide: Adaptive Attention Extension
+# 🚀 Adaptive Attention Project: Quickstart
 
-## 🚀 You're Ready to Train!
+This repository contains the implementation, training, and evaluation of an **Adaptive Attention** mechanism for Chronos-2.
 
-I've set up everything for you. Here's what's been created:
+## 🛠️ Main Scripts
 
-### New Files
-- `prepare_ett_data.py` - Loads and prepares ETTm1 dataset
-- `train_on_ett.py` - Trains adaptive attention on real data
-- `evaluate_statistical.py` - Evaluates with statistical testing
-
-### What You Have
-- ✅ ETTm1 dataset ready (69,680 timesteps, 7 variables)
-- ✅ Train/Val/Test splits (60/20/20)
-- ✅ 868 training windows, 144 test samples
-- ✅ All dependencies installed
+1.  **`train_universal.py`**: Unified training script for all datasets.
+2.  **`evaluate_paper_metrics.py`**: Unified, paper-aligned evaluation script.
+3.  **`load_fev_datasets.py`**: Unified data loader for all benchmark datasets.
+4.  **`adaptive_attention.py`**: The core implementation of the Adaptive Attention mechanism.
 
 ---
 
-## 📝 How to Run
+## 📈 How to Train
 
-### Option 1: Quick Test (5 minutes on CPU)
-Just test that everything works:
+To train the Adaptive model on any of the supported datasets (ETTm1, ETTh1, electricity, epf_de, hospital, rossmann):
+
 ```bash
-# This will train for just a few steps to verify setup
-python -c "from train_on_ett import train_on_ett; train_on_ett(max_steps=100)"
+# Example: Training on ETTm1
+python train_universal.py --dataset ETTm1 --steps 10000 --device mps
 ```
 
-### Option 2: Full Training (CPU: ~24-48 hours, GPU: ~2-4 hours)
-Full training with early stopping:
+*Note: Use `--device mps` for Apple Silicon GPU, or `--device cuda` for NVIDIA.*
+
+---
+
+## 📊 How to Evaluate
+
+To run the paper-aligned evaluation (SQL Skill Score, MASE Skill Score, MAE) and statistical testing:
+
 ```bash
-python train_on_ett.py
+# Example: Evaluating ETTm1
+python evaluate_paper_metrics.py --dataset ETTm1 --device mps
 ```
 
 This will:
-- Train for up to 10,000 steps
-- Validate every 100 steps
-- Auto-save best model to `./checkpoints/best_model.pt`
-- Stop early if validation doesn't improve for 20 checks
-
-### Option 3: Evaluate Only (10 minutes)
-If you just want to see baseline vs untrained adaptive:
-```bash
-python evaluate_statistical.py
-```
-
----
-
-## 📊 What Happens During Training
-
-```
-1. Loads ETTm1 data
-2. Prepares 868 training batches
-3. Freezes Chronos-2 backbone (119M params)
-4. Trains only adaptive bias (1.18M params)
-5. Auto-saves best model based on validation loss
-6. Stops early if no improvement
-```
-
-**Training output**:
-- `./checkpoints/best_model.pt` - Best model
-- `./results/training_log.json` - Loss curves
-
----
-
-## 📈 How to Evaluate
-
-After training completes:
-
-```bash
-python evaluate_statistical.py
-```
-
-This will:
-1. Load baseline Chronos-2
-2. Load your trained adaptive model
-3. Evaluate both on 50 test samples
-4. Perform paired t-test
-5. Save results to `./results/evaluation_results.json`
-
-**Output shows**:
-- Baseline MAE ± std
-- Adaptive MAE ± std  
-- Statistical significance (p-value)
-- Cohen's d (effect size)
-- 95% confidence interval
-
----
-
-## ⏱️ Time Estimates
-
-| Task | CPU | GPU (T4) |
-|------|-----|----------|
-| Data loading | 1 min | 1 min |
-| Training (10K steps) | 24-48 hrs | 2-4 hrs |
-| Evaluation (50 samples) | 10 min | 2 min |
-
----
-
-## 💡 Tips
-
-**If training is too slow on CPU**:
-1. Use Google Colab (free T4 GPU)
-2. Or reduce steps: `train_on_ett(max_steps=1000)`
-
-**To monitor progress**:
-```bash
-# Watch training log in real-time
-tail -f results/training_log.json
-```
-
-**To resume from checkpoint**:
-```python
-# In Python:
-from train_on_ett import train_on_ett
-import torch
-
-# Load existing checkpoint and continue
-pipeline, log = train_on_ett(max_steps=15000)  # Will continue if checkpoint exists
-```
-
----
-
-## 🎯 Expected Results
-
-Based on realistic expectations:
-
-**Success Scenarios**:
-1. **Best case**: Adaptive < Baseline with p < 0.05 ✨
-2. **Good case**: Adaptive ≈ Baseline (within 5%)
-3. **Learning case**: Higher MAE but mechanism works
-
-**All are valid research outcomes!**
+- Load the baseline Chronos-2.
+- Load your best trained checkpoint from `./checkpoints/`.
+- Perform a **paired t-test** across 50 test windows.
+- Save result JSONs to `./results/`.
 
 ---
 
 ## 📁 Project Structure
 
-```
-DNLPproject/
-├── prepare_ett_data.py      # Data loading
-├── train_on_ett.py           # Training script
-├── evaluate_statistical.py   # Evaluation
-├── adaptive_attention.py     # Your extension
-├── results/                  # Training logs
-│   ├── training_log.json
-│   └── evaluation_results.json
-└── checkpoints/              # Model saves
-    ├── best_model.pt
-    └── final_model.pt
-```
+- `checkpoints/`: Storage for `.pt` model weights.
+- `results/`: JSON metrics and PNG visualization plots.
+- `logs/`: Training logs for each run.
 
 ---
 
-## 🐛 Troubleshooting
+## ✅ Prerequisites
 
-**Out of memory?**
-- Reduce batch size: `train_on_ett(batch_size=16)`
-
-**Training too slow?**
-- Reduce steps: `train_on_ett(max_steps=1000)`
-- Use Google Colab with GPU
-
-**Want to test quickly?**
-```python
-# Mini training run (1-2 minutes)
-from train_on_ett import train_on_ett
-train_on_ett(max_steps=50, val_every=25)
+Install dependencies:
+```bash
+pip install -r Req.txt
 ```
-
----
-
-## ✅ Next Steps
-
-1. **Run quick test** to verify setup works
-2. **Start full training** (can run overnight)
-3. **Evaluate results** with statistical testing
-4. **Document findings** in walkthrough
-
-You're all set! 🚀
+*(Dependencies include: torch, chronos-forecasting, autogluon.bench, scipy, matplotlib)*
