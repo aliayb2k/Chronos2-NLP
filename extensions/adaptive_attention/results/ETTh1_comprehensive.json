@@ -1,0 +1,37 @@
+{
+  "univariate": {
+    "mean": NaN,
+    "std": NaN,
+    "median": NaN
+  },
+  "baseline": {
+    "mean": NaN,
+    "std": NaN,
+    "median": NaN
+  },
+  "adaptive": {
+    "mean": NaN,
+    "std": NaN,
+    "median": NaN
+  },
+  "comparisons": {
+    "baseline_vs_univariate": {
+      "t_statistic": NaN,
+      "p_value": NaN,
+      "improvement_pct": NaN,
+      "cohens_d": 0.0
+    },
+    "adaptive_vs_baseline": {
+      "t_statistic": NaN,
+      "p_value": NaN,
+      "improvement_pct": NaN,
+      "cohens_d": 0.0
+    },
+    "adaptive_vs_univariate": {
+      "t_statistic": NaN,
+      "p_value": NaN,
+      "improvement_pct": NaN,
+      "cohens_d": 0.0
+    }
+  }
+}
