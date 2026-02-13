@@ -1,0 +1,26 @@
+{
+  "baseline": {
+    "mean": 2.6574847424030303,
+    "std": 1.0688679802076224,
+    "median": 2.448929190635681,
+    "min": 0.6253545880317688,
+    "max": 5.382201671600342
+  },
+  "adaptive": {
+    "mean": 2.13819313287735,
+    "std": 0.9696813972445797,
+    "median": 2.0288745164871216,
+    "min": 0.5497254133224487,
+    "max": 4.465897083282471
+  },
+  "statistical_test": {
+    "t_statistic": -6.880539744180505,
+    "p_value": 5.079242144275222e-09,
+    "cohen_d": -0.9829342491686438,
+    "ci_95_lower": -0.6709592981302588,
+    "ci_95_upper": -0.3676239209211023,
+    "mean_difference": -0.5192916095256805,
+    "improvement_pct": -19.5407183807991
+  },
+  "interpretation": "Adaptive performs BETTER than baseline - highly significant (p < 0.01)"
+}
