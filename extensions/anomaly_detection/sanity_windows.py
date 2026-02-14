@@ -2,6 +2,8 @@ import numpy as np
 from chronos2_nlp.data.datasets import load_domain_series
 from chronos2_nlp.data.windowing import WindowConfig, make_windows
 
+
+
 def main():
     for domain in ["finance_spy", "energy_solar_1D"]:
         sd = load_domain_series(domain)

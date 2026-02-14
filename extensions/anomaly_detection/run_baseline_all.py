@@ -9,6 +9,7 @@ from transformers import pipeline
 from chronos2_nlp.data.datasets import load_domain_series
 
 
+
 def forecast_last_window(pipeline, values: np.ndarray, context: int, horizon: int):
     context_arr = values[-(context + horizon):-horizon].astype(np.float32)
     true_future = values[-horizon:].astype(np.float32)
@@ -19,7 +20,7 @@ def forecast_last_window(pipeline, values: np.ndarray, context: int, horizon: in
     forecast = pipeline.predict(context_in, prediction_length=horizon)
 
     pred = np.array(forecast)
-    pred = np.squeeze(pred)  # remove singleton dims if present
+    pred = np.squeeze(pred)  
     print("DEBUG pred shape:", pred.shape)
 
     if pred.ndim == 2:
@@ -32,6 +33,7 @@ def forecast_last_window(pipeline, values: np.ndarray, context: int, horizon: in
         raise ValueError(f"Unexpected forecast shape: {pred.shape}")
 
     return context_arr, true_future, pred_mean, pred_median
+
 
 
 def main():
@@ -60,7 +62,6 @@ def main():
             raise ValueError(f"{domain} too short even for minimal run: T={len(values)} < {min_needed}")
 
         ctx_len = min(args.context, len(values) - args.horizon)  # max possible without leakage
-        # optional: cap to something reasonable so solar isn't using 349 which is weird
         if domain.startswith("energy_"):
             ctx_len = min(ctx_len, 256)
 

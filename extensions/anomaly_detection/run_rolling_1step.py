@@ -1,26 +1,19 @@
 import os
 import argparse
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 from chronos import Chronos2Pipeline
 from chronos2_nlp.data.datasets import load_domain_series
+from pathlib import Path
 
 
-# -----------------------------
+
 # Forecast helper
-# -----------------------------
 def forecast_1step_samples(pipeline, context_1d: np.ndarray, n_horizon: int = 1) -> np.ndarray:
-    """
-    Returns samples with shape (n_samples, n_horizon).
-    Chronos2Pipeline expects input shape: (n_series, n_variates, history_length).
-    """
     x = context_1d.astype(np.float32)[None, None, :]  # (1, 1, L)
     forecast = pipeline.predict(x, prediction_length=n_horizon)
-
     pred = np.squeeze(np.array(forecast))  # expected (n_samples, n_horizon)
     if pred.ndim == 1:
         pred = pred[:, None]
@@ -28,9 +21,9 @@ def forecast_1step_samples(pipeline, context_1d: np.ndarray, n_horizon: int = 1)
         raise ValueError(f"Unexpected pred shape: {pred.shape}")
     return pred  # (S, H)
 
-# -----------------------------
+
+
 # Injection (realistic + auditable)
-# -----------------------------
 def inject_anomalies(
     values: np.ndarray,
     timestamps: np.ndarray,
@@ -64,7 +57,7 @@ def inject_anomalies(
     x = values.astype(np.float32).copy()
     labels = np.zeros(len(x), dtype=np.int32)
 
-    # Additive scale (fallback mode)
+    # Additive scale 
     std = float(np.nanstd(x))
     if not np.isfinite(std) or std < 1e-6:
         std = 1.0
@@ -134,9 +127,9 @@ def inject_anomalies(
 
     return x, labels, inj_idxs
 
-# -----------------------------
+
+
 # Rolling 1-step
-# -----------------------------
 def rolling_1step(
     pipeline,
     values: np.ndarray,
@@ -200,9 +193,9 @@ def rolling_1step(
     return out
 
 
-# -----------------------------
-# Detectors (B) + Ensemble (C)
-# -----------------------------
+
+# Detectors  
+#1
 def detector_pi_scorez(df: pd.DataFrame, rolling_window: int, q: float) -> pd.Series:
     thr = (
         df["score_z"]
@@ -213,6 +206,7 @@ def detector_pi_scorez(df: pd.DataFrame, rolling_window: int, q: float) -> pd.Se
     return ((df["score_z"] > thr) & (df["coverage_out"] == 1)).astype(int)
 
 
+#2
 def detector_resid_z(df: pd.DataFrame, rolling_window: int, q: float) -> pd.Series:
     r = df["residual"]
     mu = r.rolling(window=rolling_window, min_periods=max(20, rolling_window // 5)).mean()
@@ -226,6 +220,7 @@ def detector_resid_z(df: pd.DataFrame, rolling_window: int, q: float) -> pd.Seri
     return (z > thr).astype(int)
 
 
+#3
 def detector_resid_mad(df: pd.DataFrame, rolling_window: int, q: float) -> pd.Series:
     r = df["residual"]
     med = r.rolling(window=rolling_window, min_periods=max(20, rolling_window // 5)).median()
@@ -239,6 +234,7 @@ def detector_resid_mad(df: pd.DataFrame, rolling_window: int, q: float) -> pd.Se
     return (z > thr).astype(int)
 
 
+# Ensemble 
 def majority_vote(*flags: pd.Series, k: int = 2) -> pd.Series:
     s = None
     for f in flags:
@@ -256,9 +252,8 @@ def eval_pointwise(yhat: np.ndarray, y: np.ndarray):
     return prec, rec, f1, tp, fp, fn
 
 
-# -----------------------------
+
 # Plotting
-# -----------------------------
 def save_plot(df: pd.DataFrame, domain: str, results_dir: str, anomaly_col: str = "anom_ens"):
     os.makedirs(os.path.join(results_dir, "figures"), exist_ok=True)
 
@@ -285,21 +280,12 @@ def save_plot(df: pd.DataFrame, domain: str, results_dir: str, anomaly_col: str 
     print("Saved plot:", outpath)
 
 
-# -----------------------------
+
 # Yahoo loader
-# -----------------------------
 def load_yahoo_a1_csv(path: str | Path):
     """
     Yahoo S5 A1Benchmark format:
     timestamp,value,is_anomaly
-    1,0.0,0
-    2,0.09,0
-    ...
-
-    Returns:
-      ts: np.ndarray datetime64[ns] (artificial daily timeline)
-      values: np.ndarray float32
-      labels: np.ndarray int32 (0/1)
     """
     df = pd.read_csv(path)
     needed = {"timestamp", "value", "is_anomaly"}
@@ -316,9 +302,8 @@ def load_yahoo_a1_csv(path: str | Path):
     return ts, values, labels
 
 
-# -----------------------------
-# Main
-# -----------------------------
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--device", default="cpu")
@@ -360,9 +345,8 @@ def main():
 
     metrics_rows = []
 
-    # -------------------------
-    # Yahoo S5 A1Benchmark (Step D)
-    # -------------------------
+    
+    # Yahoo S5 A1Benchmark 
     if args.yahoo:
         yahoo_dir = Path(args.yahoo_dir)
         files = sorted(yahoo_dir.glob(args.yahoo_glob))
@@ -375,7 +359,7 @@ def main():
         agg = {}  # detector -> dict(tp,fp,fn)
 
         for k, fpath in enumerate(files):
-            series_id = fpath.stem  # e.g., real_1
+            series_id = fpath.stem  
             ts, values, labels = load_yahoo_a1_csv(fpath)
 
             ctx = min(args.context, len(values) - 2)
@@ -460,9 +444,9 @@ def main():
         met_y.to_csv(met_y_path, index=False)
         print("Saved Yahoo micro metrics:", met_y_path)
 
-    # -------------------------
-    # Your original two domains (injection benchmark)
-    # -------------------------
+    
+    #injection benchmark
+    
     for domain in ["finance_spy", "energy_solar_1D"]:
         sd = load_domain_series(domain, data_dir="data/processed")
         ts = sd.df["timestamp"].values
@@ -561,7 +545,7 @@ def main():
             f"anoms(pi)={int(df['anom_pi'].sum())} anoms(ens)={int(df['anom_ens'].sum())}"
         )
 
-    # Save metrics (injection + yahoo per-series rows, if any)
+    # Save metrics 
     if len(metrics_rows) > 0:
         met = pd.DataFrame(metrics_rows)
         met_path = os.path.join(args.results_dir, "tables", "inject_eval_metrics.csv")

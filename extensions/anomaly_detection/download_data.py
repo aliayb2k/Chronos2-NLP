@@ -1,11 +1,12 @@
 import argparse
-from pathlib import Path
 import urllib.request
 import zipfile
-
 import numpy as np
 import pandas as pd
+
 from datasets import load_dataset
+from pathlib import Path
+
 
 
 def ensure_dirs(root: str):
@@ -16,13 +17,13 @@ def ensure_dirs(root: str):
     return raw, processed
 
 
+
 def summarize_series(df: pd.DataFrame, name: str):
     # expects columns: timestamp, value
     df = df.sort_values("timestamp")
     n = len(df)
     miss = df["value"].isna().mean()
 
-    # rough frequency guess
     if n >= 3:
         deltas = pd.Series(df["timestamp"].values[1:]) - pd.Series(df["timestamp"].values[:-1])
         freq = deltas.mode().iloc[0] if len(deltas.mode()) > 0 else deltas.median()
@@ -35,6 +36,8 @@ def summarize_series(df: pd.DataFrame, name: str):
     )
 
 
+# functions for downloading and processing each dataset
+
 def download_spy(processed_dir: Path, start="2010-01-01", end=None):
     import yfinance as yf
 
@@ -45,13 +48,12 @@ def download_spy(processed_dir: Path, start="2010-01-01", end=None):
         end=end,
         auto_adjust=False,
         progress=False,
-        group_by="column",  # makes columns more consistent
+        group_by="column", 
     )
 
     if df is None or df.empty:
         raise RuntimeError("SPY download returned empty dataframe. Check internet or yfinance.")
 
-    # Robustly extract Close as 1D
     close = None
 
     # Case 1: normal columns
@@ -85,12 +87,12 @@ def download_spy(processed_dir: Path, start="2010-01-01", end=None):
     print("Saved:", out_path)
 
     
+
 def download_solar(processed_dir: Path):
     ds = load_dataset("autogluon/fev_datasets", "solar_1D")
     df = ds["train"].to_pandas()
     print("[solar_1D] raw columns:", df.columns.tolist())
 
-    # Similar to ETT: timestamp/value columns may be arrays -> explode
     series_id = df["id"].iloc[0]
     sub = df[df["id"] == series_id].sort_values("timestamp")
 
@@ -123,15 +125,13 @@ def download_solar(processed_dir: Path):
     print("Saved:", out_path)
 
 
+
 def download_yahoo_s5(processed_dir: Path):
-    """
-    Yahoo S5 download will be implemented next step.
-    Placeholder is kept for now.
-    """
     out_path = processed_dir / "anomaly_yahoo_s5_PLACEHOLDER.txt"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write("TODO: add Yahoo S5 download source and parser.\n")
     print("Created placeholder:", out_path)
+
 
 
 def main():
@@ -147,7 +147,7 @@ def main():
     download_spy(processed_dir, start=args.spy_start)
     download_solar(processed_dir)
 
-    # Anomaly benchmark placeholder (we implement Yahoo S5 next step)
+    # Anomaly benchmark placeholder 
     download_yahoo_s5(processed_dir)
 
     print("Done.")

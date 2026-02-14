@@ -16,6 +16,7 @@ except Exception:
 from groq import Groq
 
 
+
 def build_event_payload(df: pd.DataFrame, idx: int, win_left: int, win_right: int) -> dict:
     """
     Build a compact payload for LLM: local window + key stats.
@@ -103,7 +104,6 @@ def main():
     # Default behavior: scan Yahoo rolling tables
     ap.add_argument("--input_glob", default="results/tables/rolling_1step_yahoo_real_*.csv")
 
-    # Optional: curated list of events (recommended)
     ap.add_argument(
         "--events_csv",
         default="results/tables/yahoo_llm_shortlist.csv",
@@ -128,9 +128,8 @@ def main():
     out_rows = []
     explained = 0
 
-    # -------------------------
+   
     # Mode 1: Curated events file (recommended)
-    # -------------------------
     if args.events_csv:
         events_path = Path(args.events_csv)
         if not events_path.exists():
@@ -187,9 +186,7 @@ def main():
             })
             explained += 1
 
-    # -------------------------
     # Mode 2: old behavior (scan all rolling files, explain flagged points)
-    # -------------------------
     else:
         paths = [Path(p) for p in sorted(glob.glob(args.input_glob))]
         if not paths:

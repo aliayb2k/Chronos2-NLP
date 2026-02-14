@@ -8,11 +8,13 @@ from datasets import load_dataset
 from chronos import Chronos2Pipeline
 
 
+
 def to_list_if_array(x):
     """Convert numpy arrays to Python lists (needed before explode)."""
     if isinstance(x, np.ndarray):
         return x.tolist()
     return x
+
 
 
 def main():
@@ -37,7 +39,6 @@ def main():
     ds = load_dataset("autogluon/fev_datasets", args.dataset_config)
     df_raw = ds["train"].to_pandas()
 
-    # Sanity: show columns once
     print("Raw columns:", df_raw.columns.tolist())
 
     # 3) Build long-format dataframe: id, timestamp, target
@@ -49,14 +50,11 @@ def main():
     df = df_raw[["id", "timestamp", args.value_col]].copy()
     df = df.rename(columns={args.value_col: "target"})
 
-    # Convert numpy arrays -> lists so explode works
     df["timestamp"] = df["timestamp"].apply(to_list_if_array)
     df["target"] = df["target"].apply(to_list_if_array)
 
-    # Explode arrays so each row is one timestamp
     df = df.explode(["timestamp", "target"], ignore_index=True)
 
-    # Types
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df["target"] = pd.to_numeric(df["target"], errors="coerce")
     df = df.dropna(subset=["target"]).sort_values(["id", "timestamp"])
@@ -65,7 +63,6 @@ def main():
     series_id = df["id"].iloc[0]
     series_df = df[df["id"] == series_id].copy()
 
-    # Split into context and ground-truth for the last horizon points
     if len(series_df) <= args.horizon + 10:
         raise ValueError(f"Series too short: len={len(series_df)} horizon={args.horizon}")
 
@@ -82,7 +79,6 @@ def main():
         target="target",
     )
 
-    # Join with GT and compute metrics on median forecast
     comparison = ground_truth.copy()
     comparison["pred_median"] = pred_df["0.5"].values
 

@@ -4,6 +4,7 @@ import glob
 import pandas as pd
 
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--results_dir", default="results", help="Root results dir (default: results)")
@@ -17,7 +18,6 @@ def main():
     )
     args = parser.parse_args()
 
-    # --- locate files robustly ---
     if args.pattern is None:
         pattern = os.path.join(args.results_dir, "tables", "rolling_1step_yahoo_*.csv")
     else:
@@ -36,7 +36,7 @@ def main():
 
     rows = []
 
-    # --- read + collect ---
+    # Read + collect
     for fpath in files:
         df = pd.read_csv(fpath)
 
@@ -50,11 +50,9 @@ def main():
             continue
 
         # Ranking score (simple + consistent): absolute residual
-        # (works well for resid-based detectors; if you want another score later we can change it)
         if "residual" in df.columns:
             df["rank_score"] = df["residual"].abs()
         else:
-            # fallback: score_z if residual not present
             if "score_z" not in df.columns:
                 print(f"[extract] WARNING: {os.path.basename(fpath)} missing residual and score_z -> skipped")
                 continue
@@ -66,7 +64,6 @@ def main():
         if len(df) == 0:
             continue
 
-        # keep minimal useful columns
         keep = [
             "series_id",
             "timestamp",
