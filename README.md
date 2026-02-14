@@ -3,7 +3,7 @@
 Deep NLP course project built around **Chronos-2** for time-series forecasting and anomaly detection, with two extensions:
 
 1) **Extension A — Forecast-based anomaly detection (Yahoo S5 + residual detectors + LLM explanations)**  
-2) **Extension B — Adaptive Attention for Chronos-2 (teammate work)**
+2) **Extension B — Adaptive Attention for Chronos-2**
 
 This README focuses on **reproducibility**: clear entry points, clean outputs, and minimal assumptions.
 
@@ -11,23 +11,34 @@ This README focuses on **reproducibility**: clear entry points, clean outputs, a
 
 ## Repository structure (high-level)
 
-
+```
 Chronos2-NLP/
-README.md
-requirements.txt
-scripts/
-run_chronos2_baseline.py
-run_rolling_1step.py
-extract_yahoo_top_events.py
-run_llm_explanations.py
-src/
-chronos2_nlp/...
-configs/
-notebooks/
-extensions/
-adaptive_attention/
-demonstrate_full_workflow.py
-
+    src/
+        chronos2_nlp/
+            data/
+                dataset.py
+                windowing.py
+    configs/
+    extensions/
+        adaptive_attention/
+            adaptive_attention.py
+            evaluate_paper_metrics.py
+            load_fev_datasets.py
+            train_universal.py
+        anamoly_detection/
+            download_data.py
+            extract_yahoo_top_events.py
+            run_baseline_all.py
+            run_chronos2_baseline.py
+            run_llm_explanations.py
+            run_rolling_1step.py
+            sanity_windows.py
+    notebooks/
+        00.baseline.ipynb
+    README.md
+    requirements.txt
+    
+```
 
 ## 1) Setup
 
@@ -36,22 +47,22 @@ demonstrate_full_workflow.py
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
+```
 ### 1.2 Make sure PYTHONPATH points to src
 
-Most scripts assume:
-
+Most anomaly detection scripts assume:
+```
 $env:PYTHONPATH="$PWD\src"
-
+```
 ---
 
 ## 2) Baseline: Chronos-2 forecasting
 
 Run the baseline script:
-
+```
 $env:PYTHONPATH="$PWD\src"
-python scripts/run_chronos2_baseline.py --device cpu --horizon 96 --results_dir results
-
+python extensions/anomaly_detection/run_chronos2_baseline.py --device cpu --horizon 96 --results_dir results
+```
 Outputs (example):
 
 * results/ folder with generated tables/figures depending on script behavior.
@@ -77,14 +88,14 @@ Then we add three detectors:
 * Ensemble (`anom_ens`): majority vote (2/3) across [anom_pi, anom_resid_z, anom_resid_mad]
 
 Run on internal domains:
-
+```
 $env:PYTHONPATH="$PWD\src"
-python scripts/run_rolling_1step.py --device cpu --context 256 --max_steps 600 --stride 1
-
+python extensions/anomaly_detection/run_rolling_1step.py --device cpu --context 256 --max_steps 600 --stride 1
+```
 Outputs:
 
-* results/tables/rolling_1step_<domain>.csv
-* results/figures/rolling_1step_<domain>.png
+* `results/tables/rolling_1step_<domain>.csv`
+* `results/figures/rolling_1step_<domain>.png`
 
 ---
 
@@ -93,14 +104,14 @@ Outputs:
 We optionally inject synthetic anomalies inside the evaluated window to verify that detectors can recover known anomalies.
 
 Run:
-
+```
 $env:PYTHONPATH="$PWD\src"
-python scripts/run_rolling_1step.py --device cpu --context 256 --max_steps 600 --stride 1 --inject --n_anoms 10 --seed 0 --debug_inject
-
+python extensions/anomaly_detection/run_rolling_1step.py --device cpu --context 256 --max_steps 600 --stride 1 --inject --n_anoms 10 --seed 0 --debug_inject
+```
 Outputs:
 
-* results/tables/rolling_1step_<domain>_INJECT.csv
-* results/tables/inject_eval_metrics.csv
+* `results/tables/rolling_1step_<domain>_INJECT.csv`
+* `results/tables/inject_eval_metrics.csv`
 * optional injection debug prints in terminal
 
 ---
@@ -121,22 +132,22 @@ data/raw/yahoo_s5/A1Benchmark/
   ...
 
 #### Run Yahoo evaluation
-
+```
 $env:PYTHONPATH="$PWD\src"
-python scripts/run_rolling_1step.py --device cpu --context 256 --max_steps 600 --stride 1 --yahoo --yahoo_dir data/raw/yahoo_s5/A1Benchmark --yahoo_n 20
-
+python extensions/anomaly_detection/run_rolling_1step.py --device cpu --context 256 --max_steps 600 --stride 1 --yahoo --yahoo_dir data/raw/yahoo_s5/A1Benchmark --yahoo_n 20
+```
 Outputs:
 
 * per-series rolling tables:
 
-  * results/tables/rolling_1step_yahoo_real_*.csv
+  * `results/tables/rolling_1step_yahoo_real_*.csv`
 * micro-average metrics:
 
-  * results/tables/yahoo_a1_micro_metrics.csv
+  * `results/tables/yahoo_a1_micro_metrics.csv`
 
 The rolling table schema includes
 (example):
-timestamp,t_idx,y_true,q10,q50,q90,pi_width,abs_err,coverage_out,score_z,residual,anom_pi,anom_resid_z,anom_resid_mad,anom_ens,label,series_id
+timestamp, t_idx, y_true, q10, q50, q90, pi_width, abs_err, coverage_out, score_z, residual, anom_pi, anom_resid_z, anom_resid_mad, anom_ens, label, series_id
 
 ---
 
@@ -146,12 +157,14 @@ To make LLM usage cheap and report-friendly, we rank and select only the stronge
 
 Extract top-K events:
 
+```
 $env:PYTHONPATH="$PWD\src"
-python scripts/extract_yahoo_top_events.py --detector_col anom_resid_mad --top_k 80
+python extensions/anomaly_detection/extract_yahoo_top_events.py --detector_col anom_resid_mad --top_k 80
+``` 
 
 Typical output:
 
-* results/tables/yahoo_top_events_anom_resid_mad.csv
+* `results/tables/yahoo_top_events_anom_resid_mad.csv`
 * optionally a shortlist file created by you (e.g., `results/tables/yahoo_llm_shortlist_top20.csv`)
 
 ---
@@ -162,17 +175,19 @@ We generate short, structured explanations for selected anomaly events.
 
 #### Set API key (PowerShell)
 
+```
 $env:GROQ_API_KEY="YOUR_KEY"
+``` 
 
-#### Run LLM explanations on a curated shortlist (recommended)
-
+#### Run LLM explanations on a curated shortlist 
+```
 $env:PYTHONPATH="$PWD\src"
-python scripts/run_llm_explanations.py --events_csv results/tables/yahoo_llm_shortlist_top20.csv --detector_col anom_resid_mad --max_events 20 --groq_model llama-3.1-8b-instant
-
+python extensions/anomaly_detection/run_llm_explanations.py --events_csv results/tables/yahoo_llm_shortlist_top20.csv --detector_col anom_resid_mad --max_events 20 --groq_model llama-3.1-8b-instant
+```
 Outputs:
 
-* results/tables/yahoo_llm_explanations.csv
-* optional summary tables (if you generated them): e.g., results/tables/yahoo_llm_summary.csv
+* `results/tables/yahoo_llm_explanations.csv`
+* optional summary tables (if you generated them): e.g., `results/tables/yahoo_llm_summary.csv`
 
 ---
 
@@ -193,38 +208,4 @@ cd extensions/adaptive_attention
 python demonstrate_full_workflow.py
 cd ../..
 
----
 
-
-
----
-
-## 6) Useful commands (quick reference)
-
-### Run internal rolling 1-step
-
-$env:PYTHONPATH="$PWD\src"
-python scripts/run_rolling_1step.py --device cpu --context 256 --max_steps 600 --stride 1
-
-### Run injection sanity check
-
-$env:PYTHONPATH="$PWD\src"
-python scripts/run_rolling_1step.py --device cpu --context 256 --max_steps 600 --stride 1 --inject --n_anoms 10 --seed 0 --debug_inject
-
-### Run Yahoo evaluation
-
-$env:PYTHONPATH="$PWD\src"
-python scripts/run_rolling_1step.py --device cpu --context 256 --max_steps 600 --stride 1 --yahoo --yahoo_dir data/raw/yahoo_s5/A1Benchmark --yahoo_n 20
-
-### Extract top Yahoo events
-
-$env:PYTHONPATH="$PWD\src"
-python scripts/extract_yahoo_top_events.py --detector_col anom_resid_mad --top_k 80
-
-### Run LLM explanations on shortlist
-
-$env:PYTHONPATH="$PWD\src"
-$env:GROQ_API_KEY="YOUR_KEY"
-python scripts/run_llm_explanations.py --events_csv results/tables/yahoo_llm_shortlist_top20.csv --detector_col anom_resid_mad --max_events 20 --groq_model llama-3.1-8b-instant
-
-::contentReference[oaicite:0]{index=0}
