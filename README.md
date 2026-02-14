@@ -225,7 +225,8 @@ This repository includes a detailed quickstart guide for training and evaluation
 3.  **`load_fev_datasets.py`**: Unified data loader for all benchmark datasets.
 4.  **`adaptive_attention.py`**: The core implementation of the Adaptive Attention mechanism.
 
----
+
+
 
 #### **How to Train**
 
@@ -238,7 +239,8 @@ python train_universal.py --dataset ETTm1 --steps 10000 --device mps
 
 *Note: Use `--device mps` for Apple Silicon GPU, or `--device cuda` for NVIDIA.*
 
----
+
+
 
 #### **How to Evaluate**
 
@@ -255,7 +257,8 @@ This will:
 - Perform a **paired t-test** across 50 test windows.
 - Save result JSONs to `./results/`.
 
----
+
+
 
 #### **Extension Structure**
 
