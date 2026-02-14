@@ -194,18 +194,21 @@ Outputs:
 ## 4) Extension B: Adaptive Attention 
 
 This extension is located under:
-
 extensions/adaptive_attention/
 
-Goal (high-level):
+This extension implements an **Adaptive Relevance Bias** mechanism for the **Chronos-2** forecasting model. It enables the model to dynamically learn relationships between different variables in a multivariate time series.
 
-* surgically inject a relevance bias / adaptive attention module into Chronos-2 attention
-* optionally fine-tune only the adaptive parameters while keeping the backbone frozen
+### 4.1 Architecture
+ We surgically inject a relevance bias into the `GroupSelfAttention` layers of the pre-trained Chronos-2 encoder.
 
-Run (example):
+### 4.2 Fine-Tuning
+ We used a custom dataset of correlated signals to train the adaptive module using an `AdamW` optimizer with a learning rate of `5e-5`.
 
-cd extensions/adaptive_attention
-python demonstrate_full_workflow.py
-cd ../..
+### 4.3 Stability
+ We implemented a `0.1` scaling factor for the bias and gradient clipping to ensure the model maintains its pre-trained forecasting intelligence during adaptation.
 
+#### 🚀 Quickstart
 
+This repository includes a detailed quickstart guide for training and evaluation.
+
+📄 **See:** extensions/adaptive_attention/QUICKSTART.md
